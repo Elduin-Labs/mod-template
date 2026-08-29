@@ -36,8 +36,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # Without this the build stamps every jar "-SNAPSHOT". A tag push is a
+      # release, so say so. build-logic reads it via Project.env().
       - name: Build every version
         run: ./gradlew build --stacktrace
+        env:
+          MOD_IS_RELEASE: "true"
 
       - uses: actions/upload-artifact@v4
         with:
