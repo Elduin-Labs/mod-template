@@ -1,86 +1,75 @@
-name: release
+# .github/workflows/release.yml
+#
+# Publishes to Modrinth when a version tag is pushed (e.g. v1.2.3).
+#
+# MODRINTH_TOKEN comes from the GitHub organization secret, so new repos in the
+# org inherit it and there is nothing to configure per mod.
+#
+# One Modrinth upload per Minecraft version, because a Modrinth version entry is
+# tied to the game versions it supports. The `minecraft` matrix below is the
+# same list as the Stonecutter versions in settings.gradle.kts — the new-mod
+# skill fills both in together, and they must stay in sync.
+
+name: Release
 
 on:
   push:
     tags:
-      - '*'
+      - "v*"
 
 permissions:
   contents: write
 
 jobs:
-  release:
-    name: Release
+  build:
     runs-on: ubuntu-latest
-
-    env:
-      MOD_IS_RELEASE: true
-
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
         with:
-          fetch-depth: 0
+          distribution: temurin
+          java-version: "21"
 
-      - name: Validate tag matches version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          VERSION=$(grep '^mod\.version' stonecutter.properties.toml | cut -d'"' -f2)
-          CHANNEL_TAG=$(grep '^mod\.channel_tag' stonecutter.properties.toml | cut -d'"' -f2)
-          FULL_VERSION="${VERSION}${CHANNEL_TAG}"
+      - uses: gradle/actions/setup-gradle@v4
 
-          echo "Validating tag '$TAG' against version '$FULL_VERSION'..."
-          if [[ "$TAG" != "$FULL_VERSION" ]]; then
-            echo "::error::Tag '$TAG' does not match version '$FULL_VERSION' in stonecutter.properties.toml."
+      - name: Build every version
+        run: ./gradlew build --stacktrace
 
-            if gh release view "$GITHUB_REF_NAME" &>/dev/null; then
-              echo "Deleting GitHub release for $GITHUB_REF_NAME..."
-              gh release delete "$GITHUB_REF_NAME" -y
-            fi
-
-            git push origin ":refs/tags/$GITHUB_REF_NAME"
-            exit 1
-          fi
-          echo "✓ Tag matches version."
-
-      - name: Prepare git-cliff
-        run: |
-          REPO_URL="https://github.com/${{ github.repository }}"
-          sed -i "s|%%%repo_url%%%|${REPO_URL}|g" cliff.toml
-
-      - name: Generate changelog with git-cliff
-        uses: orhun/git-cliff-action@v4
+      - uses: actions/upload-artifact@v4
         with:
-          args: --latest --strip header --output CHANGELOG.md
-          version: 'v2.13.1'
+          name: jars
+          path: versions/*/build/libs/*.jar
 
-      - name: Setup JDK
-        uses: actions/setup-java@v4
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # KEEP IN SYNC with the Stonecutter version list.
+        minecraft: ["1.21.1", "1.21.4"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
         with:
-          java-version: 25
-          distribution: 'microsoft'
+          name: jars
+          path: versions
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Publish ${{ matrix.minecraft }} to Modrinth
+        uses: Kira-NT/mc-publish@v3.3.1
+        with:
+          modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
-      - name: Build and publish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PUB_GITHUB_ENABLE: ${{ vars.PUB_GITHUB_ENABLE }}
-          PUB_DRY_RUN: ${{ vars.PUB_DRY_RUN }}
-          PUB_MODS_ENABLE: ${{ vars.PUB_MODS_ENABLE }}
-          PUB_MAVEN_ENABLE: ${{ vars.PUB_MAVEN_ENABLE }}
-          PUB_MAVEN_CENTRAL_ENABLE: ${{ vars.PUB_MAVEN_CENTRAL_ENABLE }}
-          PUB_MAVEN_CENTRAL_SNAPSHOTS: ${{ vars.PUB_MAVEN_CENTRAL_SNAPSHOTS }}
-          PUB_MODRINTH_STAGING: ${{ vars.PUB_MODRINTH_STAGING }}
-          PUB_MODRINTH_PROJECT_ID: ${{ vars.PUB_MODRINTH_PROJECT_ID }}
-          PUB_CURSEFORGE_PROJECT_ID: ${{ vars.PUB_CURSEFORGE_PROJECT_ID }}
-          PUB_MODRINTH_TOKEN: ${{ secrets.PUB_MODRINTH_TOKEN }}
-          PUB_CURSEFORGE_TOKEN: ${{ secrets.PUB_CURSEFORGE_TOKEN }}
-          PUB_SIGNING_KEY: ${{ secrets.PUB_SIGNING_KEY }}
-          PUB_SIGNING_ID: ${{ secrets.PUB_SIGNING_ID }}
-          PUB_SIGNING_PASSWORD: ${{ secrets.PUB_SIGNING_PASSWORD }}
-          PUB_MAVEN_CENTRAL_USERNAME: ${{ secrets.PUB_MAVEN_CENTRAL_USERNAME }}
-          PUB_MAVEN_CENTRAL_PASSWORD: ${{ secrets.PUB_MAVEN_CENTRAL_PASSWORD }}
-        run: ./gradlew publishMods --no-daemon --stacktrace --console=plain
+          files: versions/${{ matrix.minecraft }}/build/libs/!(*-sources|*-dev|*-shadow).jar
+
+          name: ${{ github.ref_name }} for ${{ matrix.minecraft }}
+          version: ${{ github.ref_name }}+mc${{ matrix.minecraft }}
+          version-type: release
+          changelog-file: CHANGELOG.md
+
+          game-versions: ${{ matrix.minecraft }}
+          loaders: fabric
+          java: 21
