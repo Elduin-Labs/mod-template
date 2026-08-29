@@ -38,8 +38,10 @@ sources into the right package. Delete it afterwards.
 ./gradlew "1.21.11-fabric:build"
 ```
 
-Switch the active version **before** building a single version — switching
-rewrites the shared sources in place for that version.
+Switching is optional: each version subproject regenerates its own sources, so
+the jar is correct either way. It's there to keep the shared tree and the IDE in
+the version you're reading. Never hand-edit `.sc_active_version` to do it —
+Stonecutter tracks the tree's current form and that desyncs it.
 
 To build everything:
 

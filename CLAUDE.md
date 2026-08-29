@@ -62,9 +62,15 @@ will exhaust memory and take the whole machine down.
     ./gradlew build                                    build every version
     ./gradlew runActiveClient                          launch a dev client
 
-Switching the active version rewrites the shared sources in place for that
-version. Always switch **before** building a single version, or you will compile
-the previous version's code and get confusing errors.
+Switching rewrites the shared source tree into that version's form. It is **not**
+required before building — each version subproject regenerates its own sources,
+so the jars are correct either way. Switch to keep the working tree in the
+version you're reading, not because the build needs it.
+
+Never hand-edit `.sc_active_version`. Stonecutter records what form the shared
+sources are currently in, and editing that file behind its back desyncs the
+bookkeeping — you get `cannot find symbol` errors on classes that plainly exist.
+Use the task above and nothing else.
 
 ## Access wideners
 
