@@ -34,7 +34,13 @@ platform {
 }
 
 loom {
-	accessWidenerPath = rootProject.file("src/main/resources/aw/${sc.current.version}.accesswidener")
+	// Access wideners are optional. Drop a file at
+	// src/main/resources/aw/<mc-version>.accesswidener to use one; without it
+	// Loom skips the whole step. Empty placeholder files break the build on
+	// 1.21.11+, so there are none in the template by default.
+	rootProject.file("src/main/resources/aw/${sc.current.version}.accesswidener")
+		.takeIf { it.exists() }
+		?.let { accessWidenerPath = it }
 	runs.named("client") {
 		client()
 		ideConfigGenerated(true)

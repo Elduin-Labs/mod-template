@@ -54,7 +54,8 @@ sealed class Loader(val id: String) {
 					ModrinthEnvironment.CLIENT_ONLY_SERVER_OPTIONAL, ModrinthEnvironment.CLIENT_AND_SERVER,
 					ModrinthEnvironment.CLIENT_OR_SERVER_PREFERS_BOTH, ModrinthEnvironment.CLIENT_OR_SERVER -> "*"
 				},
-				accessWidener = "aw/${ctx.currentMcVersion}.accesswidener",
+				accessWidener = "aw/${ctx.currentMcVersion}.accesswidener"
+					.takeIf { ctx.stonecutter.project.rootProject.file("src/main/resources/$it").exists() },
 				entrypoints = mapOf(
 					"main" to listOf("${ctx.modGroup}.${ctx.modId}.platform.fabric.FabricEntrypoint"),
 					"client" to listOf("${ctx.modGroup}.${ctx.modId}.platform.fabric.FabricClientEntrypoint"),

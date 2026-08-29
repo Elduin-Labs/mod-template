@@ -2,23 +2,17 @@ package com.example.modtemplate;
 
 import com.example.modtemplate.platform.Platform;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-//? fabric {
 import com.example.modtemplate.platform.fabric.FabricPlatform;
-//?} neoforge {
-/*import com.example.modtemplate.platform.neoforge.NeoforgePlatform;
- *///?} forge {
-/*import com.example.modtemplate.platform.forge.ForgePlatform;
- *///?}
 
 @SuppressWarnings("LoggingSimilarMessage")
 public class ModTemplate {
 
 	public static final String MOD_ID = /*$ mod_id*/ "modtemplate";
-	public static final String MOD_VERSION = /*$ mod_version*/ "0.1.0";
+	public static final String MOD_VERSION = /*$ mod_version*/ "1.0.0";
 	public static final String MOD_FRIENDLY_NAME = /*$ mod_name*/ "Mod Template";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
@@ -39,28 +33,14 @@ public class ModTemplate {
 	}
 
 	private static Platform createPlatformInstance() {
-		//? fabric {
 		return new FabricPlatform();
-		//?} neoforge {
-		/*return new NeoforgePlatform();
-		 *///?} forge {
-		/*return new ForgePlatform();
-		 *///?}
 	}
 
-	private static ResourceLocation id(String path) {
-		//? > 1.19.2 {
-		return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
-		 //?} <= 1.19.2 {
-		/*return new ResourceLocation(MOD_ID, path);
-		*///?}
+	private static Identifier id(String path) {
+		return Identifier.fromNamespaceAndPath(MOD_ID, path);
 	}
 
-	private static ResourceLocation id(String namespace, String path) {
-		//? > 1.19.2 {
-		return ResourceLocation.fromNamespaceAndPath(namespace, path);
-		 //?} <= 1.19.2 {
-		/*return new ResourceLocation(namespace, path);
-		*///?}
+	private static Identifier id(String namespace, String path) {
+		return Identifier.fromNamespaceAndPath(namespace, path);
 	}
 }

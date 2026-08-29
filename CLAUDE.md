@@ -11,10 +11,10 @@ work with Elduin live in `~/.claude/CLAUDE.md`.
     mod id            <mod_id>              (underscores — never change this)
     slug              <mod-slug>            (repo name and Modrinth slug)
     package           <com.elduin.mod_id>
-    loader            <fabric>
-    minecraft         <1.21.1, 1.21.4>
-    primary version   <1.21.4>              (the one he plays)
-    java              21
+    loader            fabric                (only fabric — see below)
+    minecraft         <1.21.11, 26.2>
+    primary version   <1.21.11>             (the one he plays)
+    java              21 for 1.21.x, 25 for 26.x — Gradle picks this per version
 
 The mod id is baked into save files. Once a world has been played with this mod,
 **changing the mod id breaks that world.** Rename the display name freely;
@@ -23,21 +23,55 @@ never rename the mod id.
 ## Layout
 
 Multi-version is handled by [Stonecutter](https://plugins.gradle.org/plugin/dev.kikugie.stonecutter):
-one source tree, version-conditional comments, many outputs. The version list
-lives in `settings.gradle.kts`.
+one source tree, version-conditional comments, many outputs.
 
-    src/main/java/<package>/       the mod
-    src/main/resources/            fabric.mod.json, assets, textures
-    versions/<mcversion>/build/libs/   built jars land here
-    .github/workflows/release.yml  builds and publishes on a version tag
+    src/main/java/<package>/                the mod
+    src/main/resources/                     assets, textures, mixins, lang
+    versions/<mcversion>-fabric/build/libs/ built jars land here
+    stonecutter.properties.toml             mod id, name, version, dependencies
+    settings.gradle.kts                     the Minecraft version list
+    .github/workflows/release.yml           builds and publishes on a version tag
+
+There is **no `fabric.mod.json` file** — it is generated at build time from
+`stonecutter.properties.toml` by the code in `build-logic/`. Editing mod
+metadata means editing the `.toml`, not a json file. Same for `mod.version`:
+there is no `mod_version` in `gradle.properties`.
+
+Stonecutter subprojects are named `<mcversion>-fabric`, so the 1.21.11 jar is in
+`versions/1.21.11-fabric/build/libs/`. That `-fabric` suffix is easy to forget.
 
 Do **not** add a branch or a repo for a new Minecraft version. Add it to the
-Stonecutter list in `settings.gradle.kts` and fix whatever stops compiling.
+list in `settings.gradle.kts`, add a matching `[fabric."<version>"]` block in
+`stonecutter.properties.toml`, add it to the matrix in
+`.github/workflows/release.yml`, and fix whatever stops compiling.
+
+## Fabric only
+
+This template builds Fabric and nothing else. NeoForge and Forge were removed on
+purpose: each extra loader is another full copy of Minecraft to decompile, and
+this is an 8 GB machine. Do not add them back.
+
+For the same reason `gradle.properties` sets `org.gradle.parallel=false`.
+Leave it off. Turning it on with more than one Minecraft version in the list
+will exhaust memory and take the whole machine down.
 
 ## Commands
 
-    ./gradlew build                    build every version
-    ./gradlew "Set active project to 1.21.4"   switch the active version for the IDE
+    ./gradlew "Set active project to 1.21.11-fabric"   switch versions first
+    ./gradlew "1.21.11-fabric:build"                   build just that version
+    ./gradlew build                                    build every version
+    ./gradlew runActiveClient                          launch a dev client
+
+Switching the active version rewrites the shared sources in place for that
+version. Always switch **before** building a single version, or you will compile
+the previous version's code and get confusing errors.
+
+## Access wideners
+
+Optional and absent by default. If you need one, create
+`src/main/resources/aw/<mcversion>.accesswidener` and Loom picks it up
+automatically; without the file the step is skipped entirely. An *empty*
+placeholder file does not work — it fails the build on 1.21.11+.
 
 ## Conventions for this repo
 
@@ -52,6 +86,7 @@ Stonecutter list in `settings.gradle.kts` and fix whatever stops compiling.
 
 ## Releasing
 
-Handled by the **share-it** skill. Short version: bump `mod_version` in
-`gradle.properties`, update `CHANGELOG.md` in plain words, push a `v<version>`
-tag, and the workflow publishes to Modrinth using the org's `MODRINTH_TOKEN`.
+Handled by the **share-it** skill. Short version: bump `mod.version` in
+`stonecutter.properties.toml`, update `CHANGELOG.md` in plain words, push a
+`v<version>` tag, and the workflow publishes to Modrinth using the org's
+`MODRINTH_TOKEN`.

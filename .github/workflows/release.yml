@@ -9,6 +9,9 @@
 # tied to the game versions it supports. The `minecraft` matrix below is the
 # same list as the Stonecutter versions in settings.gradle.kts — the new-mod
 # skill fills both in together, and they must stay in sync.
+#
+# Stonecutter names its subprojects "<mc-version>-fabric", so the jar for
+# 1.21.11 lands in versions/1.21.11-fabric/build/libs/.
 
 name: Release
 
@@ -29,7 +32,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -47,8 +50,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # KEEP IN SYNC with the Stonecutter version list.
-        minecraft: ["1.21.1", "1.21.4"]
+        # KEEP IN SYNC with the Stonecutter version list in settings.gradle.kts.
+        # `java` is what that Minecraft version runs on: 21 up to 1.21.x, 25 from 26 on.
+        include:
+          - minecraft: "1.21.11"
+            java: "21"
+          - minecraft: "26.2"
+            java: "25"
     steps:
       - uses: actions/checkout@v4
 
@@ -63,7 +71,7 @@ jobs:
           modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
-          files: versions/${{ matrix.minecraft }}/build/libs/!(*-sources|*-dev|*-shadow).jar
+          files: versions/${{ matrix.minecraft }}-fabric/build/libs/!(*-sources|*-dev|*-shadow|*-javadoc).jar
 
           name: ${{ github.ref_name }} for ${{ matrix.minecraft }}
           version: ${{ github.ref_name }}+mc${{ matrix.minecraft }}
@@ -72,4 +80,4 @@ jobs:
 
           game-versions: ${{ matrix.minecraft }}
           loaders: fabric
-          java: 21
+          java: ${{ matrix.java }}

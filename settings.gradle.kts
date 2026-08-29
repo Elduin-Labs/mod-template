@@ -4,7 +4,6 @@ pluginManagement {
 		mavenCentral()
 		gradlePluginPortal()
 		maven("https://maven.fabricmc.net/") { name = "Fabric" }
-		maven("https://maven.neoforged.net/releases/") { name = "NeoForged" }
 		maven("https://maven.kikugie.dev/snapshots") { name = "KikuGie Snapshots" }
 		maven("https://maven.kikugie.dev/releases") { name = "KikuGie Releases" }
 		maven("https://maven.parchmentmc.org") { name = "ParchmentMC" }
@@ -18,17 +17,24 @@ plugins {
 	id("dev.kikugie.loom-back-compat") version "0.4.1"
 }
 
+// Fabric only. One entry per Minecraft version this mod supports.
+//
+// Each entry becomes a subproject under versions/, and each one downloads and
+// remaps its own copy of Minecraft. Every version you add here costs real disk
+// and real memory at build time — keep this list as short as the mod needs.
+//
+// KEEP IN SYNC with:
+//   - the `minecraft` matrix in .github/workflows/release.yml
+//   - the [fabric."<version>"] blocks in stonecutter.properties.toml
+//   - src/main/resources/aw/<version>.accesswidener (one file per version)
 stonecutter {
 	create(rootProject) {
-		fun match(version: String, vararg loaders: String) =
-			loaders.forEach { version("$version-$it", version).buildscript = "build.$it.gradle.kts" }
+		fun fabric(version: String) =
+			version("$version-fabric", version).apply { buildscript = "build.fabric.gradle.kts" }
 
-		match("26.1.2", "fabric", "neoforge")
-		match("1.21.7", "fabric", "neoforge")
-		match("1.21.1", "fabric", "neoforge")
-		match("1.19.2", "fabric", "forge")
+		fabric("26.2")
+		fabric("1.21.11")
 
-		vcsVersion = "1.21.7-fabric"
+		vcsVersion = "1.21.11-fabric"
 	}
 }
-
